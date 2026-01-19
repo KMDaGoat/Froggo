@@ -14,15 +14,19 @@ class tile:
             self.img.blit(image, (0, 0))
         else :
             self.img = Surface((tilewidth, tilelength + extraheight))
-            image = transform.scale(image , (tilewidth, tilelength + extraheight))
+            image = transform.scale(image , (tilewidth, tilelength + extraheight))#this makes the current tile bigger in which the extra spacd would represent a wall or cliff side
             self.img.blit(image , (0,0))
             # Add a small highlight on top of cliffs to show the edge
             if extraheight > 0:
-                draw.rect(self.img, (105, 138, 0), (0, 0, 64, 5))
+                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
             elif overlay:
-                draw.rect(self.img, (105, 138, 0), (0, 0, 64, 5))
+                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
 
         self.rect = self.img.get_rect(topleft=(x, y))
+        if y == 448 or y == 512 or y == 576 :
+            #print(self.rect.center)
+            pass
+
 
 
 #make the actual object which handles the plaer as well as trees:
@@ -65,6 +69,19 @@ class treeorplayer:
                     if self.rect.x >= width:
                         self.rect.x -= movement
 
+
+class log:
+    def __init__(self , x , y , image , base, length):
+        image = transform.scale(image , (base , length))
+        self.img = Surface((80,50) , SRCALPHA)
+        self.img.blit(image , (0,0))
+        self.rect = Rect(x , y , base , length )
+
+    def logmovement(self):
+        maxdistance = 800
+
+
+
 colwise = 11
 tilemap = [
     ["G"] * colwise,
@@ -96,17 +113,21 @@ for index , item in enumerate(tilemap):
     for multiplier , col in enumerate(item):
         xpos , ypos = multiplier * 64 , index * 64
         if col == "G":
+            #refer to the object and put in thr paramters into the object
             pic = image.load(r"C:\Users\aliff\Downloads\grassone.png")
             groundlayer.append(tile(xpos , ypos , pic))
             if index == 11:
+                # refer to the object and put in thr paramters into the object
                 pic = image.load(r"C:\Users\aliff\Downloads\grassone.png")
                 groundlayer.append(tile(xpos, ypos, pic , 0 , False , True))
+
         if col == "R":
             pic = image.load(r"C:\Users\aliff\OneDrive\Desktop\froggoassets\PNG\Default\roadTexture_13.png")
             groundlayer.append(tile(xpos, ypos, pic))
         elif col == "W":
             pic = image.load(r"C:\Users\aliff\Downloads\water.png")
             waterlayer.append(tile(xpos, ypos, pic))
+
         elif col == "C":
             if index == 10:
                 pic = image.load(r"C:\Users\aliff\Downloads\cliff.png")
@@ -130,11 +151,25 @@ for i in range(numberoftrees):
     trees.append(treeorplayer(xpos, ypos, pic, 40, 45))
 
 
-
+tableofxpos = [0, 625]
+tableofypos = [480, 544, 604]
+pic = image.load(r"C:\Users\aliff\Downloads\log.png")
+logs = []
+for i in range(len(tableofxpos)):
+    if i == 0:
+        x = tableofxpos[i]
+        y1 , y2 = tableofypos[0] , tableofypos[2]
+        logs =[log(x , y1, pic , 80 , 50) ,
+               log(x, y2 , pic , 80 , 50)]
+    if i == 1:
+        x = tableofxpos[i]
+        y = tableofypos[1]
+        logs.append(log(x , y , pic , 80 , 50))
 
 endgame = False
-while not endgame:
+lastspawn = time.get_ticks()
 
+while not endgame:
     player.playermovement()
     for e in  event.get():
         if e.type == QUIT:
@@ -145,10 +180,18 @@ while not endgame:
     for tile in groundlayer:
         screen.blit(tile.img , tile.rect)
 
+    for object in logs:
+        screen.blit(object.img, object.rect)
+        object.logmovement()
+
+
+
+
     depth_elements = [player] + trees
     #sorts the list out in order of lowest to highest yaxis vals
     depth_elements.sort(key=lambda obj: obj.rect.bottom)
     for obj in depth_elements:
         obj.shadow(screen)
         screen.blit(obj.img ,  obj.rect)
+
     display.update()
