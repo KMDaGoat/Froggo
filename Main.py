@@ -27,6 +27,9 @@ class tile:
             #print(self.rect.center)
             pass
 
+c = time.Clock()
+FPS = 60
+
 
 
 #make the actual object which handles the plaer as well as trees:
@@ -41,18 +44,19 @@ class treeorplayer:
         self.rect = Rect(x , y , base , length )#make a rectangle for the shadow to attach to
         self.speed = 4
 
+
     def shadow(self , screen):
         shadowappearance = Surface((self.rect.width , 14) ,SRCALPHA)
         draw.ellipse(shadowappearance , (0,0,0,90) , [0,0,self.rect.width , 14 ])
         screen.blit(shadowappearance , (self.rect.x , self.rect.bottom - 7))
 
     def playermovement(self):
+
         movement = 64
         lowerlim = -64
         for e in event.get():
             if e.type == KEYDOWN:
                 if e.key == K_w:
-
                     self.rect.y -= movement
                     if self.rect.y < lowerlim:
                         self.rect.y += movement
@@ -68,17 +72,29 @@ class treeorplayer:
                     self.rect.x += movement
                     if self.rect.x >= width:
                         self.rect.x -= movement
+        print(self.rect.center)
 
 
 class log:
-    def __init__(self , x , y , image , base, length):
+    def __init__(self , x , y , image , base, length , opposite):
+        self.opposite = opposite
         image = transform.scale(image , (base , length))
         self.img = Surface((80,50) , SRCALPHA)
         self.img.blit(image , (0,0))
         self.rect = Rect(x , y , base , length )
+        self.speed = 1
+    def draw(self , screen):
+        screen.blit(self.img , self.rect)
 
-    def logmovement(self):
-        maxdistance = 800
+    def movement(self):
+        #print("so it is being referrred to ")
+        if self.opposite:
+            #print("so the apramters did pass in")
+            self.rect.x -= self.speed
+        elif not self.opposite:
+            self.rect.x += self.speed
+
+
 
 
 
@@ -142,6 +158,37 @@ player = treeorplayer( (width / 2) , height , pic ,  64, 64  )
 pic = image.load(r"C:\Users\aliff\Downloads\tree.png")
 trees = []
 
+
+#with the logs i could make them into a logs group
+#and then pass in a paramter in which determines what direction it starst mvoing in
+
+class loggroup:
+    def __init__(self):
+        #acc adds all the log objects into a single list
+        self.tableofxpos = [0, 625]
+        self.tableofypos = [455 , 520 , 585]
+        self.pic = image.load(r"C:\Users\aliff\Downloads\log.png")
+        for i in range(len(self.tableofxpos)):
+            if i == 0:
+                x = self.tableofxpos[i]
+                y1, y2 = self.tableofypos[0], self.tableofypos[2]
+                self.logs = [log(x, y1, self.pic, 80, 50 , False),
+                        log(x, y2, self.pic, 80, 50 , False)]
+            if i == 1:
+                x = self.tableofxpos[i]
+                y = self.tableofypos[1]
+                self.logs.append(log(x, y, self.pic, 80, 50 , True ))
+
+    def drawlogs(self):
+        #goes trhough the list and then for each object runs the functions to draw it onot the screen update the movement
+        for log in self.logs:
+            log.movement()
+            log.draw(screen)
+            log.movement()
+
+
+logs = loggroup()
+
 numberoftrees = 15
 for i in range(numberoftrees):
     xpos = random.randint(1,720)
@@ -150,24 +197,9 @@ for i in range(numberoftrees):
     ypos = (ypos // 64) * 64
     trees.append(treeorplayer(xpos, ypos, pic, 40, 45))
 
-
-tableofxpos = [0, 625]
-tableofypos = [480, 544, 604]
-pic = image.load(r"C:\Users\aliff\Downloads\log.png")
-logs = []
-for i in range(len(tableofxpos)):
-    if i == 0:
-        x = tableofxpos[i]
-        y1 , y2 = tableofypos[0] , tableofypos[2]
-        logs =[log(x , y1, pic , 80 , 50) ,
-               log(x, y2 , pic , 80 , 50)]
-    if i == 1:
-        x = tableofxpos[i]
-        y = tableofypos[1]
-        logs.append(log(x , y , pic , 80 , 50))
-
 endgame = False
-lastspawn = time.get_ticks()
+
+
 
 while not endgame:
     player.playermovement()
@@ -175,23 +207,19 @@ while not endgame:
         if e.type == QUIT:
             endgame = True
 
-    for tile in waterlayer:
-        screen.blit(tile.img , tile.rect)
-    for tile in groundlayer:
-        screen.blit(tile.img , tile.rect)
-
-    for object in logs:
-        screen.blit(object.img, object.rect)
-        object.logmovement()
 
 
+    for tile in waterlayer:screen.blit(tile.img , tile.rect)
 
-
+    for tile in groundlayer:screen.blit(tile.img , tile.rect)
     depth_elements = [player] + trees
-    #sorts the list out in order of lowest to highest yaxis vals
+        # sorts the list out in order of lowest to highest yaxis vals
     depth_elements.sort(key=lambda obj: obj.rect.bottom)
+
     for obj in depth_elements:
         obj.shadow(screen)
         screen.blit(obj.img ,  obj.rect)
 
+    logs.drawlogs()
+    c.tick(FPS)
     display.update()
