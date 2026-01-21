@@ -1,5 +1,8 @@
 from pygame import *
 import random
+
+from pygame.examples.music_drop_fade import starting_pos
+
 width , height =  720 , 1080
 screen = display.set_mode((width , height))
 colourcliff =  (20, 80, 20)
@@ -42,7 +45,8 @@ class treeorplayer:
         self.img = Surface((base , length) , SRCALPHA)
         self.img.blit(image , (0,0))
         self.rect = Rect(x , y , base , length )#make a rectangle for the shadow to attach to
-        self.speed = 4
+        self.randomint = random.randint(1, 5)
+        self.speed = self.randomint
 
 
     def shadow(self , screen):
@@ -72,17 +76,18 @@ class treeorplayer:
                     self.rect.x += movement
                     if self.rect.x >= width:
                         self.rect.x -= movement
-        print(self.rect.center)
 
 
 class log:
-    def __init__(self , x , y , image , base, length , opposite):
+    def __init__(self , x , y , image , base, length , opposite ):
         self.opposite = opposite
-        image = transform.scale(image , (base , length))
-        self.img = Surface((80,50) , SRCALPHA)
-        self.img.blit(image , (0,0))
-        self.rect = Rect(x , y , base , length )
-        self.speed = 1
+        image = transform.scale(image, (base, length))
+        self.img = Surface((80, 50), SRCALPHA)
+        self.img.blit(image, (0, 0))
+        self.rect = Rect(x, y, base, length)
+        randomnum = random.uniform(0.25,2.0)
+        self.speed = randomnum
+
     def draw(self , screen):
         screen.blit(self.img , self.rect)
 
@@ -93,6 +98,12 @@ class log:
             self.rect.x -= self.speed
         elif not self.opposite:
             self.rect.x += self.speed
+
+
+
+
+
+
 
 
 
@@ -165,26 +176,37 @@ trees = []
 class loggroup:
     def __init__(self):
         #acc adds all the log objects into a single list
-        self.tableofxpos = [0, 625]
+        self.tableofxpos = [-80, 800]
         self.tableofypos = [455 , 520 , 585]
         self.pic = image.load(r"C:\Users\aliff\Downloads\log.png")
         for i in range(len(self.tableofxpos)):
             if i == 0:
                 x = self.tableofxpos[i]
                 y1, y2 = self.tableofypos[0], self.tableofypos[2]
-                self.logs = [log(x, y1, self.pic, 80, 50 , False),
-                        log(x, y2, self.pic, 80, 50 , False)]
+                self.logs = [log(x, y1, self.pic, 70, 40 , False),
+                        log(x, y2, self.pic, 70, 40 , False )]
             if i == 1:
                 x = self.tableofxpos[i]
                 y = self.tableofypos[1]
-                self.logs.append(log(x, y, self.pic, 80, 50 , True ))
+                self.logs.append(log(x, y, self.pic, 80, 50 , True))
+
+        self.logs =[]
+
+    def spawn(self):
+        y = random.choice(self.tableofypos)
+        x = random.choice(self.tableofxpos)
+        if x == -80:
+            self.logs.append(log(x, y, self.pic, 80, 50, False))
+        if x == 800:
+            self.logs.append(log(x, y, self.pic, 80, 50, True))
 
     def drawlogs(self):
-        #goes trhough the list and then for each object runs the functions to draw it onot the screen update the movement
         for log in self.logs:
             log.movement()
             log.draw(screen)
             log.movement()
+            
+        self.logs = [l for l in self.logs if -100 < l.rect.x < width + 100]
 
 
 logs = loggroup()
@@ -199,27 +221,36 @@ for i in range(numberoftrees):
 
 endgame = False
 
-
-
+starttime = time.get_ticks()
+delay = 1000
 while not endgame:
     player.playermovement()
-    for e in  event.get():
+    for e in event.get():
         if e.type == QUIT:
             endgame = True
 
-
-
     for tile in waterlayer:screen.blit(tile.img , tile.rect)
 
+    logs.drawlogs()
+
+    currenttime = time.get_ticks()
+    if currenttime - starttime > delay:
+        logs.spawn()
+        starttime = currenttime
+        currenttime = time.get_ticks()
+
+
     for tile in groundlayer:screen.blit(tile.img , tile.rect)
+
     depth_elements = [player] + trees
         # sorts the list out in order of lowest to highest yaxis vals
     depth_elements.sort(key=lambda obj: obj.rect.bottom)
+
 
     for obj in depth_elements:
         obj.shadow(screen)
         screen.blit(obj.img ,  obj.rect)
 
-    logs.drawlogs()
+
     c.tick(FPS)
     display.update()
