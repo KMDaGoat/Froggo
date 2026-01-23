@@ -33,6 +33,7 @@ class tile:
 c = time.Clock()
 FPS = 60
 
+pic = image.load(r"C:\Users\aliff\Downloads\frog.png")
 
 
 #make the actual object which handles the plaer as well as trees:
@@ -45,8 +46,7 @@ class treeorplayer:
         self.img = Surface((base , length) , SRCALPHA)
         self.img.blit(image , (0,0))
         self.rect = Rect(x , y , base , length )#make a rectangle for the shadow to attach to
-        self.randomint = random.randint(1, 5)
-        self.speed = self.randomint
+
 
 
     def shadow(self , screen):
@@ -54,8 +54,9 @@ class treeorplayer:
         draw.ellipse(shadowappearance , (0,0,0,90) , [0,0,self.rect.width , 14 ])
         screen.blit(shadowappearance , (self.rect.x , self.rect.bottom - 7))
 
-    def playermovement(self):
 
+
+    def playermovement(self):
         movement = 64
         lowerlim = -64
         for e in event.get():
@@ -76,6 +77,14 @@ class treeorplayer:
                     self.rect.x += movement
                     if self.rect.x >= width:
                         self.rect.x -= movement
+
+        self.playerhitbox = self.rect.inflate(-10, -15)
+        draw.rect(screen, (255, 0, 0), self.playerhitbox, 2)
+        playerhitbox = self.playerhitbox
+
+        return playerhitbox , self.rect
+
+player = treeorplayer( (width / 2) , height , pic ,  60, 60  )
 
 
 class log:
@@ -99,12 +108,56 @@ class log:
         elif not self.opposite:
             self.rect.x += self.speed
 
+    def collision(self):
+        hitbox  = self.rect.inflate(-20, -30)
+        playerhitbox , xpos = player.playermovement()
+        if hitbox.colliderect(playerhitbox):
+            xpos.x = self.rect.x
 
+class car:
+    def __init__(self , x,y , image , base , length , opposite):
+        self.opposite = opposite
+        if not self.opposite:
+            image = transform.scale(image, (base, length)).convert()
+            image = transform.flip(image, True, False)
+            self.img = Surface((80, 50), SRCALPHA)
+            self.img.blit(image, (0, 0))
+            self.rect = Rect(x, y, base, length)
+            randomnum = random.uniform(0.25, 2.0)
+            self.speed = randomnum
+        else:
+            image = transform.scale(image, (base, length)).convert()
+            self.img = Surface((80, 50), SRCALPHA)
+            self.img.blit(image, (0, 0))
+            self.rect = Rect(x, y, base, length)
+            randomnum = random.uniform(0.25, 2.0)
+            self.speed = randomnum
 
+        self.rectpos = []
+        self.rectpos.append(self.rect)
 
+    def draw(self , screen):
+        screen.blit(self.img , self.rect)
 
+    def movement(self):
+        if self.opposite:
+            self.rect.x -= self.speed
+            #for position in self.rectpos:
+                #if self.rect.colliderect(position):
+                   # self.rect.x += 5
+                   # print("it is still happenign why")
+        else:
+            self.rect.x += self.speed
+            #for position in self.rectpos:
+              #  if self.rect.colliderect(position):
+                  #  self.rect.x -= 5
+                  #  print("it is still happening")
 
-
+    def collision(self):
+        hitbox = self.rect.inflate(-20, -30)
+        playerhitbox, xpos = player.playermovement()
+        if hitbox.colliderect(playerhitbox):
+            print("you die or some like that ")
 
 
 
@@ -127,10 +180,7 @@ tilemap = [
     ["R"] * colwise,
     ["R"] * colwise,
     ["R"] * colwise,
-    ["G"] * colwise,
-
-
-]
+    ["G"] * colwise]
 
 waterlayer =[]
 groundlayer = []
@@ -150,6 +200,7 @@ for index , item in enumerate(tilemap):
 
         if col == "R":
             pic = image.load(r"C:\Users\aliff\OneDrive\Desktop\froggoassets\PNG\Default\roadTexture_13.png")
+            print(xpos , ypos)
             groundlayer.append(tile(xpos, ypos, pic))
         elif col == "W":
             pic = image.load(r"C:\Users\aliff\Downloads\water.png")
@@ -163,12 +214,16 @@ for index , item in enumerate(tilemap):
                 pic = image.load(r"C:\Users\aliff\Downloads\cliff.png")
                 groundlayer.append(tile(xpos , ypos , pic , 25))
 
-pic = image.load(r"C:\Users\aliff\Downloads\frog.png")
-player = treeorplayer( (width / 2) , height , pic ,  64, 64  )
 
 pic = image.load(r"C:\Users\aliff\Downloads\tree.png")
 trees = []
-
+numberoftrees = 15
+for i in range(numberoftrees):
+    xpos = random.randint(1,720)
+    xpos = (xpos // 64) * 64
+    ypos = random.randint(1, 1080)
+    ypos = (ypos // 64) * 64
+    trees.append(treeorplayer(xpos, ypos, pic, 40, 45))
 
 #with the logs i could make them into a logs group
 #and then pass in a paramter in which determines what direction it starst mvoing in
@@ -183,8 +238,8 @@ class loggroup:
             if i == 0:
                 x = self.tableofxpos[i]
                 y1, y2 = self.tableofypos[0], self.tableofypos[2]
-                self.logs = [log(x, y1, self.pic, 70, 40 , False),
-                        log(x, y2, self.pic, 70, 40 , False )]
+                self.logs = [log(x, y1, self.pic, 80, 50 , False),
+                        log(x, y2, self.pic, 80, 50 , False )]
             if i == 1:
                 x = self.tableofxpos[i]
                 y = self.tableofypos[1]
@@ -202,27 +257,72 @@ class loggroup:
 
     def drawlogs(self):
         for log in self.logs:
+            log.collision()
             log.movement()
             log.draw(screen)
             log.movement()
-            
+            log.collision()
+
         self.logs = [l for l in self.logs if -100 < l.rect.x < width + 100]
+
+class groupcarsfirstlane:
+    def __init__(self):
+        #keep generating 2 from each ranges
+        #until i get 4 points on
+        randomxpos1 = random.randint(-100 , -10)
+        randomxpos2 = random.randint(750, 800)
+
+        self.tableofxpos = [-80, 800]
+        self.tableofypos = [64, 128 , 192 , 256]
+        self.pic = image.load(r"C:\Users\aliff\Downloads\car.png")
+        for i in range(len(self.tableofxpos)):
+            if i == 0:
+                x = self.tableofxpos[i]
+                y1, y2 = self.tableofypos[0], self.tableofypos[2]
+                self.cars = [car(x, y1, self.pic, 80, 50, False),
+                             car(x, y2, self.pic, 80, 50, False)]
+            if i == 1 :
+                x = self.tableofxpos[i]
+                y1 , y2 = self.tableofypos[1] , self.tableofypos[3]
+                self.cars.append(car(x, y1, self.pic, 80, 50, True))
+                self.cars.append(car(x, y2, self.pic, 80, 50, True))
+
+        self.cars = []
+
+    def spawn(self):
+        #with this i want to have it so that there is onyl cars going on each lines
+        yrandomone = random.choice([64 , 192])
+        yrandomtwo = random.choice([128 , 256])
+        x = random.choice(self.tableofxpos)
+        if x < 0 :
+            self.cars.append(car(x, yrandomone, self.pic, 80, 50, False))
+        elif x > 720:
+            self.cars.append(car(x, yrandomtwo, self.pic, 80, 50, True))
+
+
+
+    def drawcars(self):
+        for car in self.cars:
+            car.collision()
+            car.movement()
+            car.draw(screen)
+            car.movement()
+            car.collision()
+
+        self.cars = [c for c in self.cars if -100 < c.rect.x < width + 100]
+
+
+
 
 
 logs = loggroup()
-
-numberoftrees = 15
-for i in range(numberoftrees):
-    xpos = random.randint(1,720)
-    xpos = (xpos // 64) * 64
-    ypos = random.randint(1, 1080)
-    ypos = (ypos // 64) * 64
-    trees.append(treeorplayer(xpos, ypos, pic, 40, 45))
+carsfirstlane = groupcarsfirstlane()
 
 endgame = False
 
 starttime = time.get_ticks()
 delay = 1000
+
 while not endgame:
     player.playermovement()
     for e in event.get():
@@ -236,11 +336,12 @@ while not endgame:
     currenttime = time.get_ticks()
     if currenttime - starttime > delay:
         logs.spawn()
+        carsfirstlane.spawn()
         starttime = currenttime
         currenttime = time.get_ticks()
 
-
     for tile in groundlayer:screen.blit(tile.img , tile.rect)
+    carsfirstlane.drawcars()
 
     depth_elements = [player] + trees
         # sorts the list out in order of lowest to highest yaxis vals
@@ -254,3 +355,25 @@ while not endgame:
 
     c.tick(FPS)
     display.update()
+
+#btw u have to keep everythign contains wiithin the class when trying to maniupkate any oroperites of the object
+#the only thing u fo outside the code in regards to objects is referring to a function of the class or actually intialisaing it
+#as well as this what i figured out is during the spaning of multiple logs i was lookign at it the wrong way
+#i looked at it from the persepctive of looking outside the object ans then addiang it in
+#the proper way was to actually make a new log object within the group and then add it into the list
+#in which all the logs were made intially
+#an exmaple of this was that i made a function in the log group which adds a new log into the list to then be drawn in
+#this function was only invioled and called upon after the delay in whcih a new log was then added to the list of logs and then with that lsit of logs
+#the draw function in the log group class then goes through all of logs list and draws them
+#so in escense the group handles and treats all the log objects as one meaning they all do one thing in which the loggroup is only used to to control the singular objects
+#the behhaviors of thsoe singular objects ids all determined by the singular object which in thsi case was logs
+
+
+#i need a way to refer to the characters rectangle as well as the logs rectangle
+#with that i need to have ti so that when they two rectabgles touch each other and collide
+#the rect of the froggo follows the rect of the log it is currently obn
+#i need this to run oin the mainloop onbe way or another
+
+
+#one way is to create a new part with the collisoon
+#and woitht eh collision refer to both thge character and the logs using the objecbts alkready created before hand
