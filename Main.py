@@ -8,37 +8,17 @@ screen = display.set_mode((width , height))
 colourcliff =  (20, 80, 20)
 
 tilewidth , tilelength = 80 , 64
-class tile:
-    def __init__(self , x , y , image ,extraheight = 0 , flip = False , overlay = False):
-        if flip:
-            image = transform.scale(image, (tilewidth, tilelength + extraheight))
-            image = transform.flip(image , False , True)
-            self.img = Surface((tilewidth, tilelength + extraheight))
-            self.img.blit(image, (0, 0))
-        else :
-            self.img = Surface((tilewidth, tilelength + extraheight))
-            image = transform.scale(image , (tilewidth, tilelength + extraheight))#this makes the current tile bigger in which the extra spacd would represent a wall or cliff side
-            self.img.blit(image , (0,0))
-            # Add a small highlight on top of cliffs to show the edge
-            if extraheight > 0:
-                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
-            elif overlay:
-                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
 
-        self.rect = self.img.get_rect(topleft=(x, y))
-        if y == 448 or y == 512 or y == 576 :
-            #print(self.rect.center)
-            pass
 
 c = time.Clock()
 FPS = 60
-
-pic = image.load(r"C:\Users\aliff\Downloads\frog.png")
 
 
 #make the actual object which handles the plaer as well as trees:
 class treeorplayer:
     def __init__(self , x , y , image , base , length ):
+        self.x = x
+        self.y = y
         image = transform.scale(image, (base, length))
         colourremoval = image.get_at((0, 0))
         image.set_colorkey(colourremoval)
@@ -48,13 +28,16 @@ class treeorplayer:
         self.rect = Rect(x , y , base , length )#make a rectangle for the shadow to attach to
 
 
+    def playerdead(self):
+        #need to make it go back to the start
+        self.rect.x = self.x
+        self.rect.y = self.y
+
 
     def shadow(self , screen):
         shadowappearance = Surface((self.rect.width , 14) ,SRCALPHA)
         draw.ellipse(shadowappearance , (0,0,0,90) , [0,0,self.rect.width , 14 ])
         screen.blit(shadowappearance , (self.rect.x , self.rect.bottom - 7))
-
-
 
     def playermovement(self):
         movement = 64
@@ -78,13 +61,15 @@ class treeorplayer:
                     if self.rect.x >= width:
                         self.rect.x -= movement
 
-        self.playerhitbox = self.rect.inflate(-10, -15)
+        self.playerhitbox = self.rect.inflate(-20, -15)
         draw.rect(screen, (255, 0, 0), self.playerhitbox, 2)
         playerhitbox = self.playerhitbox
 
         return playerhitbox , self.rect
 
+pic = image.load(r"C:\Users\aliff\Downloads\frog.png")
 player = treeorplayer( (width / 2) , height , pic ,  60, 60  )
+
 
 
 class log:
@@ -94,8 +79,7 @@ class log:
         self.img = Surface((80, 50), SRCALPHA)
         self.img.blit(image, (0, 0))
         self.rect = Rect(x, y, base, length)
-        randomnum = random.uniform(0.25,2.0)
-        self.speed = randomnum
+        self.speed = 1.5
 
     def draw(self , screen):
         screen.blit(self.img , self.rect)
@@ -108,11 +92,60 @@ class log:
         elif not self.opposite:
             self.rect.x += self.speed
 
+        return self.rect
+
     def collision(self):
         hitbox  = self.rect.inflate(-20, -30)
         playerhitbox , xpos = player.playermovement()
         if hitbox.colliderect(playerhitbox):
             xpos.x = self.rect.x
+            return True
+
+
+
+class tile:
+    def __init__(self , x , y , image ,extraheight = 0 , flip = False , overlay = False , water = False):
+        if water:
+            self.water = water
+            image = transform.scale(image, (tilewidth, tilelength + extraheight))
+            image = transform.flip(image, False, True)
+            self.img = Surface((tilewidth, tilelength + extraheight))
+            self.img.blit(image, (0, 0))
+        if flip:
+            image = transform.scale(image, (tilewidth, tilelength + extraheight))
+            image = transform.flip(image , False , True)
+            self.img = Surface((tilewidth, tilelength + extraheight))
+            self.img.blit(image, (0, 0))
+        else :
+            self.img = Surface((tilewidth, tilelength + extraheight))
+            image = transform.scale(image , (tilewidth, tilelength + extraheight))#this makes the current tile bigger in which the extra spacd would represent a wall or cliff side
+            self.img.blit(image , (0,0))
+            # Add a small highlight on top of cliffs to show the edge
+            if extraheight > 0:
+                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
+            elif overlay:
+                draw.rect(self.img, (105, 138, 0), (0, 0, tilewidth, 5))
+
+        self.rect = self.img.get_rect(topleft=(x, y))
+
+    def watercollision(self , loglist):
+        waterhitbox = self.rect.inflate(0, -5)
+        playerhitbox, xpos = player.playermovement()
+        if loglist != []:
+            if waterhitbox.colliderect(playerhitbox):
+                onlog = False
+                # Loop through the list we just "passed in"
+                for log in loglist:
+                    if log.collision():
+                        onlog = True
+
+                if not onlog:
+                    player.playerdead()
+        else:
+            pass
+
+
+
 
 class car:
     def __init__(self , x,y , image , base , length , opposite):
@@ -123,18 +156,13 @@ class car:
             self.img = Surface((80, 50), SRCALPHA)
             self.img.blit(image, (0, 0))
             self.rect = Rect(x, y, base, length)
-            randomnum = random.uniform(0.25, 2.0)
-            self.speed = randomnum
+            self.speed = 1.5
         else:
             image = transform.scale(image, (base, length)).convert()
             self.img = Surface((80, 50), SRCALPHA)
             self.img.blit(image, (0, 0))
             self.rect = Rect(x, y, base, length)
-            randomnum = random.uniform(0.25, 2.0)
-            self.speed = randomnum
-
-        self.rectpos = []
-        self.rectpos.append(self.rect)
+            self.speed = 1.5
 
     def draw(self , screen):
         screen.blit(self.img , self.rect)
@@ -142,24 +170,16 @@ class car:
     def movement(self):
         if self.opposite:
             self.rect.x -= self.speed
-            #for position in self.rectpos:
-                #if self.rect.colliderect(position):
-                   # self.rect.x += 5
-                   # print("it is still happenign why")
         else:
             self.rect.x += self.speed
-            #for position in self.rectpos:
-              #  if self.rect.colliderect(position):
-                  #  self.rect.x -= 5
-                  #  print("it is still happening")
 
     def collision(self):
         hitbox = self.rect.inflate(-20, -30)
         playerhitbox, xpos = player.playermovement()
         if hitbox.colliderect(playerhitbox):
-            print("you die or some like that ")
 
-
+            print("should return to spawn")
+            player.playerdead()
 
 
 colwise = 11
@@ -204,7 +224,7 @@ for index , item in enumerate(tilemap):
             groundlayer.append(tile(xpos, ypos, pic))
         elif col == "W":
             pic = image.load(r"C:\Users\aliff\Downloads\water.png")
-            waterlayer.append(tile(xpos, ypos, pic))
+            waterlayer.append(tile(xpos, ypos, pic , 0  , False , False , True))
 
         elif col == "C":
             if index == 10:
@@ -255,6 +275,8 @@ class loggroup:
         if x == 800:
             self.logs.append(log(x, y, self.pic, 80, 50, True))
 
+        return self.logs
+
     def drawlogs(self):
         for log in self.logs:
             log.collision()
@@ -265,16 +287,13 @@ class loggroup:
 
         self.logs = [l for l in self.logs if -100 < l.rect.x < width + 100]
 
+        return self.logs
+
 class groupcarsfirstlane:
     def __init__(self):
-        #keep generating 2 from each ranges
-        #until i get 4 points on
-        randomxpos1 = random.randint(-100 , -10)
-        randomxpos2 = random.randint(750, 800)
-
         self.tableofxpos = [-80, 800]
         self.tableofypos = [64, 128 , 192 , 256]
-        self.pic = image.load(r"C:\Users\aliff\Downloads\car.png")
+        self.pic = image.load(r"C:\Users\aliff\Downloads\car.png").convert_alpha()
         for i in range(len(self.tableofxpos)):
             if i == 0:
                 x = self.tableofxpos[i]
@@ -294,12 +313,52 @@ class groupcarsfirstlane:
         yrandomone = random.choice([64 , 192])
         yrandomtwo = random.choice([128 , 256])
         x = random.choice(self.tableofxpos)
-        if x < 0 :
+
+        if x <= 0 :
             self.cars.append(car(x, yrandomone, self.pic, 80, 50, False))
-        elif x > 720:
+        elif x >= 720:
             self.cars.append(car(x, yrandomtwo, self.pic, 80, 50, True))
 
+    def drawcars(self):
+        for car in self.cars:
+            car.collision()
+            car.movement()
+            car.draw(screen)
+            car.movement()
+            car.collision()
 
+        self.cars = [c for c in self.cars if -100 < c.rect.x < width + 100]
+
+
+class groupcarsecondlane:
+    def __init__(self):
+        self.tableofxpos = [-80, 800]
+        self.tableofypos = [768, 832, 896, 960]
+        self.pic = image.load(r"C:\Users\aliff\Downloads\car.png").convert_alpha()
+        for i in range(len(self.tableofxpos)):
+            if i == 0:
+                x = self.tableofxpos[i]
+                y1, y2 = self.tableofypos[0], self.tableofypos[2]
+                self.cars = [car(x, y1, self.pic, 80, 50, False),
+                             car(x, y2, self.pic, 80, 50, False)]
+            if i == 1:
+                x = self.tableofxpos[i]
+                y1, y2 = self.tableofypos[1], self.tableofypos[3]
+                self.cars.append(car(x, y1, self.pic, 80, 50, True))
+                self.cars.append(car(x, y2, self.pic, 80, 50, True))
+
+        self.cars = []
+
+    def spawn(self):
+        # with this i want to have it so that there is onyl cars going on each lines
+        yrandomone = random.choice([768, 896])
+        yrandomtwo = random.choice([832, 960])
+        x = random.choice(self.tableofxpos)
+
+        if x <= 0:
+            self.cars.append(car(x, yrandomone, self.pic, 80, 50, False))
+        elif x >= 720:
+            self.cars.append(car(x, yrandomtwo, self.pic, 80, 50, True))
 
     def drawcars(self):
         for car in self.cars:
@@ -313,15 +372,16 @@ class groupcarsfirstlane:
 
 
 
-
-
 logs = loggroup()
+logs.drawlogs()
 carsfirstlane = groupcarsfirstlane()
+carsecondlane = groupcarsecondlane()
 
 endgame = False
 
 starttime = time.get_ticks()
 delay = 1000
+loglist = []
 
 while not endgame:
     player.playermovement()
@@ -329,24 +389,29 @@ while not endgame:
         if e.type == QUIT:
             endgame = True
 
-    for tile in waterlayer:screen.blit(tile.img , tile.rect)
+    for tile in waterlayer:
+        screen.blit(tile.img , tile.rect)
+        tile.watercollision(loglist)
 
-    logs.drawlogs()
+
+    loglist = logs.drawlogs()
 
     currenttime = time.get_ticks()
     if currenttime - starttime > delay:
         logs.spawn()
         carsfirstlane.spawn()
+        carsecondlane.spawn()
         starttime = currenttime
         currenttime = time.get_ticks()
 
     for tile in groundlayer:screen.blit(tile.img , tile.rect)
+
     carsfirstlane.drawcars()
+    carsecondlane.drawcars()
 
     depth_elements = [player] + trees
-        # sorts the list out in order of lowest to highest yaxis vals
+    # sorts the list out in order of lowest to highest yaxis vals
     depth_elements.sort(key=lambda obj: obj.rect.bottom)
-
 
     for obj in depth_elements:
         obj.shadow(screen)
