@@ -1,8 +1,6 @@
 from pygame import *
 import random
 
-from pygame.examples.music_drop_fade import starting_pos
-
 width , height =  720 , 1080
 screen = display.set_mode((width , height))
 colourcliff =  (20, 80, 20)
